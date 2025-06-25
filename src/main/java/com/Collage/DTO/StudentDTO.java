@@ -2,8 +2,10 @@ package com.Collage.DTO;
 
 import jakarta.validation.constraints.*;
 import lombok.*;
+import org.bson.types.ObjectId;
 
 import java.math.BigInteger;
+import java.util.List;
 
 @Data
 @AllArgsConstructor
@@ -33,5 +35,5 @@ public class StudentDTO {
         private String password;
 
         @NotNull(message = "Address ID is required")
-        private String addressId;
+        private List<String> addressId;
 }

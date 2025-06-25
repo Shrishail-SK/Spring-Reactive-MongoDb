@@ -15,10 +15,10 @@ public class PageRequestPayload {
     private int page = 0;
     private int size = 10;
     private String sortBy = "personId";
-    private boolean asscending = true;
+    private boolean ascending = true;
 
     public Pageable getPageable(){
-        Sort sort = asscending ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
+        Sort sort = ascending ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
         return PageRequest.of(page, size,sort);
     }
 

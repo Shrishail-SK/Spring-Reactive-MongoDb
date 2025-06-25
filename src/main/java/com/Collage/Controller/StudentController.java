@@ -8,9 +8,9 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 /**
@@ -80,5 +80,20 @@ public class StudentController {
     public Mono<ResponseEntity<ResponseDTO>> deleteStudent(@PathVariable String id) {
         return studentService.deleteStudent(id);
     }
+
+    @GetMapping("/with-address")
+    public Mono<ResponseEntity<ResponseDTO>> getAllWithAddress() {
+        return studentService.getStudentsWithFullAddress()
+                .map(list -> ResponseEntity.ok(new ResponseDTO(200, true, "Students with addresses fetched", list)))
+                .onErrorResume(e -> Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .body(new ResponseDTO(500, false, "Aggregation failed"))));
+    }
+
+    @GetMapping("/with-addresss")
+    public Mono<ResponseEntity<ResponseDTO>> getAllWithAddresss(PageRequestPayload pageRequestPayload) {
+        Pageable pageable = pageRequestPayload.getPageable();
+        return studentService. getStudentsWithFullAddresss(pageable);
+    }
+
 
 }

@@ -1,30 +1,42 @@
 package com.Collage.Service.Impl;
 import com.Collage.DTO.ResponseDTO;
 import com.Collage.DTO.StudentDTO;
+import com.Collage.DTO.StudentWithAddressDTO;
 import com.Collage.Entity.Student;
 import com.Collage.Repository.StudentRepo;
 import com.Collage.Service.StudentService;
+import org.bson.types.ObjectId;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.mongodb.core.ReactiveMongoTemplate;
+import org.springframework.data.mongodb.core.aggregation.Aggregation;
+import org.springframework.data.mongodb.core.aggregation.AggregationOperation;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static org.springframework.data.mongodb.core.aggregation.Aggregation.lookup;
+import static org.springframework.data.mongodb.core.aggregation.Aggregation.newAggregation;
+
 @Service
-public  class StudentServiceImpl implements StudentService {
+public  class  StudentServiceImpl implements StudentService {
     @Autowired
     private StudentRepo studentRepo;
 
     private final ModelMapper modelMapper = new ModelMapper();
 
+    @Autowired
+    private ReactiveMongoTemplate reactiveMongoTemplate;
 
     /**
      * @param studentDTO the DTO containing api data to save in student data
@@ -35,14 +47,18 @@ public  class StudentServiceImpl implements StudentService {
 
      // Use ManualMapping
     public Mono<ResponseEntity<ResponseDTO>> createStudent(StudentDTO studentDTO) {
-        return studentRepo.save(Student.builder()
+        List<ObjectId> objectIds = studentDTO.getAddressId().stream()
+                .map(ObjectId::new)
+                .collect(Collectors.toList());
+        Student student = Student.builder()
                         .name(studentDTO.getName())
                         .department(studentDTO.getDepartment())
                         .phone(studentDTO.getPhone())
                         .email(studentDTO.getEmail())
                         .password(studentDTO.getPassword())
-                        .addressId(studentDTO.getAddressId())
-                        .build())
+                        .addressId(objectIds)
+                        .build();
+        return studentRepo.save(student)
                 .map(saved -> ResponseEntity.ok(new ResponseDTO(200, true, "Student saved successfully")))
                 .onErrorResume(e -> Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                         .body(new ResponseDTO(500, false, "Student Saving failed"))));
@@ -65,8 +81,9 @@ public  class StudentServiceImpl implements StudentService {
             default -> 0;
         };
     }
-       @Override
 
+
+       @Override
 
        public Mono<Page<StudentDTO>> getAllStudentsWithPagination(Pageable pageable) {
            int pageNo = pageable.getPageNumber();
@@ -100,7 +117,9 @@ public  class StudentServiceImpl implements StudentService {
                                        .phone(student.getPhone())
                                        .email(student.getEmail())
                                        .password(student.getPassword())
-                                       .addressId(student.getAddressId())
+                                       .addressId( student.getAddressId().stream()
+                                               .map(ObjectId::toHexString)
+                                               .collect(Collectors.toList()))
                                        .build())
                                .collect(Collectors.toList());
 
@@ -140,12 +159,15 @@ public  class StudentServiceImpl implements StudentService {
     public Mono<ResponseEntity<ResponseDTO>> updateStudent(String id, StudentDTO studentDTO) {
         return studentRepo.findById(id)
                 .flatMap(existing-> {
+                    List<ObjectId> objectIds = studentDTO.getAddressId().stream()
+                            .map(ObjectId::new)
+                            .collect(Collectors.toList());
                     existing.setName(studentDTO.getName());
                     existing.setDepartment(studentDTO.getDepartment());
                     existing.setPhone(studentDTO.getPhone());
                     existing.setEmail(studentDTO.getEmail());
                     existing.setPassword(studentDTO.getPassword());
-                    existing.setAddressId(studentDTO.getAddressId());
+                    existing.setAddressId(objectIds);
                         return studentRepo.save(existing)
                     .map(saved -> ResponseEntity.ok(new ResponseDTO(200, true, "Student updated Successfully",existing)));
                 })
@@ -167,5 +189,72 @@ public  class StudentServiceImpl implements StudentService {
                 .defaultIfEmpty(ResponseEntity.status(HttpStatus.NOT_FOUND)
                         .body(new ResponseDTO(404, false, "Student not found")));
     }
+
+    /**
+     *
+     * @return Aggregation query's
+     */
+    @Override
+    public Mono<List<StudentWithAddressDTO>> getStudentsWithFullAddress() {
+        Aggregation aggregation = Aggregation.newAggregation(
+                //Aggregation.match(Criteria.where("department").is("Information Science")),
+               // Aggregation.project("name", "email", "addressId"),
+               // Aggregation.unwind("addresses", true),
+               // Aggregation.group("department").count().as("studentCount"),
+                Aggregation.group("department").count().as("studentCount"),
+                Aggregation.sort(Sort.by(Sort.Direction.ASC, "studentCount")),
+
+                Aggregation.lookup("address", "addressId", "_id", "addresses") // if addressId is a List of ObjectIds
+        );
+
+        return reactiveMongoTemplate.aggregate(aggregation, "student", StudentWithAddressDTO.class)
+                .collectList(); // // Mono<List<>>
+    }
+
+    /**
+     *
+     * @param pageable
+     * @return Aggregation Query With Pagination
+     */
+    @Override
+    public Mono<ResponseEntity<ResponseDTO>> getStudentsWithFullAddresss(Pageable pageable) {
+        int pageNo = pageable.getPageNumber();
+        int pageSize = pageable.getPageSize();
+        Sort sort = pageable.getSort(); // Extract sort
+
+        List<AggregationOperation> operations = new ArrayList<>();
+        operations.add(Aggregation.lookup("address", "addressId", "_id", "addresses"));
+
+        // Add dynamic sorting if present
+        for (Sort.Order order : sort) {
+            operations.add(Aggregation.sort(Sort.by(order.getDirection(), order.getProperty())));
+        }
+
+        // Add pagination
+        operations.add(Aggregation.skip((long) pageNo * pageSize));
+        operations.add(Aggregation.limit(pageSize));
+
+        Aggregation aggregation = Aggregation.newAggregation(operations);
+
+        Mono<List<StudentWithAddressDTO>> dataMono = reactiveMongoTemplate
+                .aggregate(aggregation, "student", StudentWithAddressDTO.class)
+                .collectList();
+
+        Mono<Long> totalMono = reactiveMongoTemplate.count(new Query(), Student.class);
+
+        return Mono.zip(dataMono, totalMono)
+                .map(tuple -> {
+                    List<StudentWithAddressDTO> students = tuple.getT1();
+                    long total = tuple.getT2();
+
+                    Page<StudentWithAddressDTO> page = new PageImpl<>(students, pageable, total);
+                    return ResponseEntity.ok(new ResponseDTO(200, true, "Students with addresses fetched", page));
+                })
+                .onErrorResume(e -> Mono.just(
+                        ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                                .body(new ResponseDTO(500, false, "Aggregation failed: " + e.getMessage()))
+                ));
+    }
+
 
 }

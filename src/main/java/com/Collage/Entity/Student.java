@@ -1,10 +1,12 @@
 package com.Collage.Entity;
 
 import lombok.*;
+import org.bson.types.ObjectId;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.math.BigInteger;
+import java.util.List;
 
 @Data
 @AllArgsConstructor
@@ -21,6 +23,6 @@ public class Student {
     private BigInteger phone;
     private String email;
     private String password;
-    private String addressId;
+    private List<ObjectId> addressId;
 
 }
