@@ -6,10 +6,7 @@ import com.Collage.Service.AddressService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
 /**
@@ -33,5 +30,15 @@ public class AddressController {
     public Mono<ResponseEntity<ResponseDTO>> createAddress(@Valid @RequestBody AddressDto addressDto){
         return addressService.create(addressDto);
     }
+
+    @DeleteMapping("/delete/{id}")
+    public Mono<ResponseEntity<ResponseDTO>> deleteAddress(@PathVariable String id) {
+        return addressService.deleteAddress(id);
+    }
+    @GetMapping("/{id}")
+    public Mono<ResponseEntity<ResponseDTO>> getStudentById(@PathVariable String id) {
+        return addressService.getStudentById(id);
+    }
+
 
 }

@@ -1,5 +1,6 @@
 package com.Collage.DTO;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import jakarta.validation.constraints.*;
 import lombok.*;
 import org.bson.types.ObjectId;
@@ -20,6 +21,9 @@ public class StudentDTO {
         @NotBlank(message = "Name is required")
         private String name;
 
+        @NotBlank(message = "Age is required")
+        private int age;
+
         @NotBlank(message = "Department is required")
         private String department;
 
@@ -32,8 +36,14 @@ public class StudentDTO {
 
         @NotBlank(message = "Password is required")
         @Size(min = 6, message = "Password must be at least 6 characters")
+        @JsonInclude(JsonInclude.Include.NON_NULL)
         private String password;
+
+        @NotNull(message = "feePaid number is required")
+        private double feesPaid;
 
         @NotNull(message = "Address ID is required")
         private List<String> addressId;
+
+       private List<String> hobbiesId;
 }

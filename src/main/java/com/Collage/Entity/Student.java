@@ -19,10 +19,13 @@ public class Student {
     @Id
     private String id;
     private String name;
+    private int age;
     private String department;
     private BigInteger phone;
     private String email;
     private String password;
+    private double feesPaid;
     private List<ObjectId> addressId;
+    private List<ObjectId> hobbiesId;
 
 }

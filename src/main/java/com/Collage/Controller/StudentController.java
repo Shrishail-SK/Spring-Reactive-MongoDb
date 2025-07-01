@@ -11,6 +11,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 /**
@@ -89,11 +90,42 @@ public class StudentController {
                         .body(new ResponseDTO(500, false, "Aggregation failed"))));
     }
 
+/**
+ * Performs an aggregation pipeline to fetch students along with their full address details.
+ *
+ * <p>The pipeline includes the following stages:</p>
+ *
+ * <ul>
+ *     <li><b>$lookup</b>: Performs a left outer join with the "address" collection
+ *         on "addressId" in student matching "_id" in address, outputting as "addresses".</li>
+ *     <li><b>$sort</b>: Sorts the result by the specified field (e.g., "name") in ascending or descending order.</li>
+ *     <li><b>$skip</b>: Skips (pageNo * pageSize) number of documents for pagination.</li>
+ *     <li><b>$limit</b>: Limits the number of returned documents to the specified page size.</li>
+ * </ul>
+ *
+ * <p>Example usage:</p>
+ * <pre>{@code
+ * Aggregation aggregation = Aggregation.newAggregation(
+ *     Aggregation.lookup("address", "addressId", "_id", "addresses"),
+ *     Aggregation.sort(Sort.by(Sort.Direction.ASC, "name")),
+ *     Aggregation.skip((long) pageNo * pageSize),
+ *     Aggregation.limit(pageSize)
+ * );
+ * }</pre>
+ *
+ * @return a paginated list of students, each enriched with their related address data.
+ *  */
     @GetMapping("/with-addresss")
     public Mono<ResponseEntity<ResponseDTO>> getAllWithAddresss(PageRequestPayload pageRequestPayload) {
         Pageable pageable = pageRequestPayload.getPageable();
         return studentService. getStudentsWithFullAddresss(pageable);
     }
+
+    @GetMapping("/by-pattern/{pattern}")
+    public Mono<ResponseEntity<ResponseDTO>> getByRegex(@PathVariable String pattern) {
+        return studentService.getStudentsByRegex(pattern);
+    }
+
 
 
 }

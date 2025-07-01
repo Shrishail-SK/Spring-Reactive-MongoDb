@@ -11,9 +11,11 @@ import java.util.List;
 public class StudentWithAddressDTO {
     private String id;
     private String name;
+    private int age;
     private String department;
     private BigInteger phone;
     private String email;
-    private String password;
-    private List<AddressDto>  addresses;
+    private double feesPaid;
+    private List<AddressDto>  addressDetails;
+    private List<HobbiesDTO> hobbiesDetails;
 }

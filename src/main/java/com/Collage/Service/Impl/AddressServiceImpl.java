@@ -12,7 +12,7 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
 @Service
-public class AddressServiceImpl implements AddressService {
+public  class AddressServiceImpl implements AddressService {
 
     @Autowired
     private AddressRepo addressRepo;
@@ -34,5 +34,22 @@ public class AddressServiceImpl implements AddressService {
                     ResponseDTO errorResponse = new ResponseDTO(HttpStatus.INTERNAL_SERVER_ERROR.value(), false, "Failed to save address");
                     return Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse));
                 });
+    }
+
+    @Override
+    public Mono<ResponseEntity<ResponseDTO>> deleteAddress(String id) {
+        return addressRepo.findById(id)
+                .flatMap(existing -> addressRepo.deleteById(id))
+                .then(Mono.just(ResponseEntity.ok(new ResponseDTO(200,true,"Address deleted Successfully"))))
+                .defaultIfEmpty(ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(new ResponseDTO(404, false, "Address not found")));
+    }
+
+    @Override
+    public Mono<ResponseEntity<ResponseDTO>> getStudentById(String id) {
+        return addressRepo.findById(id)
+                .map(student -> ResponseEntity.ok(new ResponseDTO(200, true, "Student Data Found Successfully",student)))
+                .defaultIfEmpty(ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(new ResponseDTO(404, false, "Student not found")));
     }
 }
